@@ -85,16 +85,21 @@ func getCommitStats() (int, int, error) {
 	if !isGitRepository() {
 		return 0, 0, fmt.Errorf("not a git repository")
 	}
-	cmd := exec.Command("git", "log", "--oneline")
-	stdout, err := cmd.StdoutPipe()
+	gitCmd := exec.Command("git", "log", "--oneline")
+	stdout, err := gitCmd.StdoutPipe()
 	if err != nil {
 		return 0, 0, err
 	}
-	if err := cmd.Start(); err != nil {
+	if err := gitCmd.Start(); err != nil {
 		return 0, 0, err
 	}
-	defer cmd.Wait()
-	cmd = exec.Command("wc", "-lw")
+	defer func() {
+		if err := gitCmd.Wait(); err != nil {
+			// Log error but don't fail if wc command succeeds
+			_ = err
+		}
+	}()
+	cmd := exec.Command("wc", "-lw")
 	cmd.Stdin = stdout
 	output, err := cmd.Output()
 	if err != nil {
