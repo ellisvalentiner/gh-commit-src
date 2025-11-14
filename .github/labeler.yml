@@ -1,0 +1,43 @@
+# Labeler configuration for automatic PR labeling based on file patterns
+
+go:
+  - '**/*.go'
+  - '!**/*_test.go'
+  - '!**/testdata/**'
+
+test:
+  - '**/*_test.go'
+  - '**/testdata/**'
+  - '**/*.test'
+
+documentation:
+  - '**/*.md'
+  - '**/*.mdx'
+  - '**/docs/**'
+  - '**/README*'
+  - '**/CHANGELOG*'
+  - '**/LICENSE*'
+
+workflow:
+  - '.github/workflows/**'
+  - '.github/**/*.yml'
+  - '.github/**/*.yaml'
+
+dependencies:
+  - 'go.mod'
+  - 'go.sum'
+  - '**/go.mod'
+  - '**/go.sum'
+
+config:
+  - '.github/**'
+  - '**/.gitignore'
+  - '**/.golangci.yml'
+  - '**/.golangci.yaml'
+  - '**/dependabot.yml'
+
+script:
+  - '**/*.sh'
+  - '**/*.bash'
+  - '**/scripts/**'
+
