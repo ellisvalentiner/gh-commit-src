@@ -19,15 +19,20 @@ func TestStatsFlag(t *testing.T) {
 	}
 }
 
-func Test_main(t *testing.T) {
-	tests := []struct {
-		name string
-	}{
-		// TODO: Add test cases.
+func TestAskFlag(t *testing.T) {
+	flagSet := flag.NewFlagSet("TestAskFlag", flag.ContinueOnError)
+	ask := flagSet.String("ask", "", "ask a question")
+
+	err := flagSet.Parse([]string{"-ask", "test question"})
+	if err != nil {
+		t.Fatal("Error parsing flags:", err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			main()
-		})
+
+	if *ask != "test question" {
+		t.Errorf("Expected ask flag to be 'test question', but got '%s'", *ask)
 	}
 }
+
+// Note: Testing main() directly is difficult as it has side effects
+// In a production environment, you'd refactor main() to be more testable
+// by extracting the logic into separate functions

@@ -48,12 +48,16 @@ func main() {
 
 	if flag.NFlag() == 0 {
 		diff, err := getGitDiff()
-		completionResponse, err := getChatCompletionResponse(getDiffPrompt(diff))
-		completionResponse = formatResponse(completionResponse)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			return
 		}
+		completionResponse, err := getChatCompletionResponse(getDiffPrompt(diff))
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			return
+		}
+		completionResponse = formatResponse(completionResponse)
 		fmt.Println(completionResponse)
 	}
 }

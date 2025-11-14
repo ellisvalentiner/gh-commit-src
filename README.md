@@ -53,7 +53,7 @@ Before running AutoCommit, it's advisable to set a few environment variables �
 - `OPENAI_URL`:  Override openai api eg: azure openai (Optional; Default: openai url)
 - `OPENAI_API_KEY`: The API key for the GPT-4 model (🚨 **Required**).
 - `OPENAI_MODEL`: Specify a different language model 🔄 (Optional; Default: `gpt-4`).
-- `FINE_TUNE_PARAMS`: Additional parameters for fine-tuning the model output ⚙️ (Optional; Default: `{}`).
+- `FINE_TUNE_PARAMS`: Additional parameters for fine-tuning the model output ⚙️ (Optional; Default: `{}`). Supports JSON format with parameters like `temperature`, `max_tokens`, `top_p`, `frequency_penalty`, `presence_penalty`.
 
 Add these environment variables by appending them to your `.bashrc`, `.zshrc`, or other shell configuration files 📄:
 
@@ -67,7 +67,7 @@ export FINE_TUNE_PARAMS='{"temperature": 0.7}'
 Or, you can set them inline before running the AutoCommit command 🖱️:
 
 ```bash
-OPENAI_URL=your-openai-api-key-here OPENAI_MODEL=gpt-4 FINE_TUNE_PARAMS='{"temperature": 0.7}' git auto-commit
+OPENAI_URL=https://api.openai.com/v1 OPENAI_API_KEY=your-openai-api-key-here OPENAI_MODEL=gpt-4 FINE_TUNE_PARAMS='{"temperature": 0.7}' git auto-commit
 ```
 
 ### Complete Install 📦
@@ -75,7 +75,7 @@ OPENAI_URL=your-openai-api-key-here OPENAI_MODEL=gpt-4 FINE_TUNE_PARAMS='{"tempe
 For an end-to-end installation experience, execute 👇:
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/ghcli/commit/main/install.sh)
+bash <(curl -s https://raw.githubusercontent.com/ghcli/gh-commit/main/install.sh)
 ```
 
 This comprehensive script accomplishes the following 📋:
