@@ -126,13 +126,8 @@ func loadConfig() (*Config, error) {
 		}
 	}
 
-	// Also load from config file fine_tune section if present
-	if config.FineTune.Temperature == nil && config.FineTune.MaxTokens == nil &&
-		config.FineTune.TopP == nil && config.FineTune.FrequencyPenalty == nil &&
-		config.FineTune.PresencePenalty == nil {
-		// No fine-tune params from env, check if config file has them
-		// (already loaded above if config file exists)
-	}
+	// Fine-tune params from config file are already loaded above when parsing the YAML
+	// Environment variables (FINE_TUNE_PARAMS) take precedence and are applied above
 
 	return config, nil
 }
