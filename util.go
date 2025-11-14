@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -68,9 +66,20 @@ func getGitDiff() (string, error) {
 	size := len(runes)
 	if size > MaxDiffLength {
 		runes = runes[:MaxDiffLength]
-		return string(runes), fmt.Errorf("the total length was %d and only first 30k were used", size)
+		// Return a warning (not an error) - the truncated diff is still usable
+		return string(runes), &DiffTruncatedWarning{OriginalSize: size, TruncatedSize: MaxDiffLength}
 	}
 	return diff, nil
+}
+
+// DiffTruncatedWarning is a warning (not an error) indicating the diff was truncated
+type DiffTruncatedWarning struct {
+	OriginalSize  int
+	TruncatedSize int
+}
+
+func (w *DiffTruncatedWarning) Error() string {
+	return fmt.Sprintf("Warning: diff was truncated from %d to %d characters (max: %d)", w.OriginalSize, w.TruncatedSize, MaxDiffLength)
 }
 
 func calculateTimeSaved(numCommits int, wordCount int) float64 {
@@ -118,15 +127,17 @@ func getCommitStats() (int, int, error) {
 }
 
 func getCommitPrompt() string {
-	if prompt := os.Getenv("PROMPT_OVERRIDE"); prompt != "" {
-		return prompt
+	config, err := getConfig()
+	if err == nil && config.Prompt.Override != "" {
+		return config.Prompt.Override
 	}
 	return defaultCommitPrompt
 }
 
 func getCommitMessageSuffix() string {
-	if suffix := os.Getenv("COMMIT_MESSAGE_SUFFIX"); suffix != "" {
-		return suffix
+	config, err := getConfig()
+	if err == nil && config.Prompt.Suffix != "" {
+		return config.Prompt.Suffix
 	}
 	return defaultCommitMessageSuffix
 }
@@ -150,25 +161,45 @@ func getPrompt(message string) []azopenai.ChatMessage {
 }
 
 func getChatCompletionResponse(messages []azopenai.ChatMessage) (string, error) {
+	// Load .env file if present (for backward compatibility)
 	err := godotenv.Load()
 	if err != nil {
 		// .env file is optional, so we ignore the error
 		_ = err
 	}
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		return "", fmt.Errorf("OPENAI_API_KEY environment variable is not set. Please export OPENAI_API_KEY=<api_key>")
+
+	// Load configuration
+	config, err := getConfig()
+	if err != nil {
+		return "", fmt.Errorf("error loading configuration: %v", err)
 	}
-	keyCredential, err := azopenai.NewKeyCredential(apiKey)
+
+	if config.OpenAI.APIKey == "" {
+		return "", fmt.Errorf("OPENAI_API_KEY is not set. Please set it in config file or environment variable")
+	}
+
+	keyCredential, err := azopenai.NewKeyCredential(config.OpenAI.APIKey)
 	if err != nil {
 		return "", fmt.Errorf("error creating Azure OpenAI client: %v", err)
 	}
-	url := os.Getenv("OPENAI_URL")
-	model := os.Getenv("OPENAI_MODEL")
+
+	url := config.OpenAI.URL
+	if url == "" {
+		url = "https://api.openai.com/v1"
+	}
+
+	model := config.OpenAI.Model
+	if model == "" {
+		model = openai.GPT4
+	}
+
 	var client *azopenai.Client
 
 	if strings.Contains(url, "azure") {
-		apiVersion := getAzureAPIVersion()
+		apiVersion := config.OpenAI.APIVersion
+		if apiVersion == "" {
+			apiVersion = defaultAzureAPIVersion
+		}
 		clientOptions := &azopenai.ClientOptions{
 			ClientOptions: policy.ClientOptions{
 				APIVersion: apiVersion,
@@ -183,10 +214,6 @@ func getChatCompletionResponse(messages []azopenai.ChatMessage) (string, error) 
 		if err != nil {
 			return "", fmt.Errorf("error creating Azure OpenAI client: %v", err)
 		}
-
-	}
-	if model == "" {
-		model = openai.GPT4
 	}
 
 	options := azopenai.ChatCompletionsOptions{
@@ -194,28 +221,21 @@ func getChatCompletionResponse(messages []azopenai.ChatMessage) (string, error) 
 		Deployment: model,
 	}
 
-	// Parse FINE_TUNE_PARAMS if provided
-	fineTuneParams := os.Getenv("FINE_TUNE_PARAMS")
-	if fineTuneParams != "" {
-		var params map[string]interface{}
-		if err := json.Unmarshal([]byte(fineTuneParams), &params); err == nil {
-			// Apply common parameters
-			if temp, ok := params["temperature"].(float64); ok {
-				options.Temperature = to.Ptr(float32(temp))
-			}
-			if maxTokens, ok := params["max_tokens"].(float64); ok {
-				options.MaxTokens = to.Ptr(int32(maxTokens))
-			}
-			if topP, ok := params["top_p"].(float64); ok {
-				options.TopP = to.Ptr(float32(topP))
-			}
-			if frequencyPenalty, ok := params["frequency_penalty"].(float64); ok {
-				options.FrequencyPenalty = to.Ptr(float32(frequencyPenalty))
-			}
-			if presencePenalty, ok := params["presence_penalty"].(float64); ok {
-				options.PresencePenalty = to.Ptr(float32(presencePenalty))
-			}
-		}
+	// Apply fine-tune parameters from config
+	if config.FineTune.Temperature != nil {
+		options.Temperature = config.FineTune.Temperature
+	}
+	if config.FineTune.MaxTokens != nil {
+		options.MaxTokens = config.FineTune.MaxTokens
+	}
+	if config.FineTune.TopP != nil {
+		options.TopP = config.FineTune.TopP
+	}
+	if config.FineTune.FrequencyPenalty != nil {
+		options.FrequencyPenalty = config.FineTune.FrequencyPenalty
+	}
+	if config.FineTune.PresencePenalty != nil {
+		options.PresencePenalty = config.FineTune.PresencePenalty
 	}
 
 	resp, err := client.GetChatCompletions(
@@ -240,21 +260,17 @@ func getChatCompletionResponse(messages []azopenai.ChatMessage) (string, error) 
 }
 
 func getAzureAPIVersion() string {
-	if version := os.Getenv("AZURE_API_VERSION"); version != "" {
-		return version
+	config, err := getConfig()
+	if err == nil && config.OpenAI.APIVersion != "" {
+		return config.OpenAI.APIVersion
 	}
 	return defaultAzureAPIVersion
 }
 
 func getCodeBlockPatterns() []string {
-	if patternsEnv := os.Getenv("CODE_BLOCK_PATTERNS"); patternsEnv != "" {
-		// Allow comma-separated list of patterns from environment
-		patterns := strings.Split(patternsEnv, ",")
-		// Trim whitespace from each pattern
-		for i, pattern := range patterns {
-			patterns[i] = strings.TrimSpace(pattern)
-		}
-		return patterns
+	config, err := getConfig()
+	if err == nil && len(config.CodeBlock.Patterns) > 0 {
+		return config.CodeBlock.Patterns
 	}
 	return defaultCodeBlockPatterns
 }

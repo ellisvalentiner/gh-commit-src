@@ -8,6 +8,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.6.1
 	github.com/joho/godotenv v1.3.0
 	github.com/sashabaranov/go-openai v1.15.3
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

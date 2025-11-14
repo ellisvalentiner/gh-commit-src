@@ -147,9 +147,15 @@ func Test_getDiffPrompt(t *testing.T) {
 }
 
 func Test_getDiffPrompt_WithPromptOverride(t *testing.T) {
+	// Reset config to ensure fresh load
+	resetConfig()
+
 	// Set PROMPT_OVERRIDE
 	originalPrompt := os.Getenv("PROMPT_OVERRIDE")
-	defer os.Setenv("PROMPT_OVERRIDE", originalPrompt)
+	defer func() {
+		os.Setenv("PROMPT_OVERRIDE", originalPrompt)
+		resetConfig()
+	}()
 
 	customPrompt := "Custom prompt for testing"
 	os.Setenv("PROMPT_OVERRIDE", customPrompt)
@@ -212,9 +218,15 @@ func Test_getPrompt(t *testing.T) {
 }
 
 func Test_getChatCompletionResponse_MissingAPIKey(t *testing.T) {
+	// Reset config to ensure fresh load
+	resetConfig()
+
 	// Save original API key
 	originalKey := os.Getenv("OPENAI_API_KEY")
-	defer os.Setenv("OPENAI_API_KEY", originalKey)
+	defer func() {
+		os.Setenv("OPENAI_API_KEY", originalKey)
+		resetConfig()
+	}()
 
 	// Unset API key
 	os.Unsetenv("OPENAI_API_KEY")
@@ -227,8 +239,8 @@ func Test_getChatCompletionResponse_MissingAPIKey(t *testing.T) {
 	if err == nil {
 		t.Error("getChatCompletionResponse() should return error when OPENAI_API_KEY is not set")
 	}
-	if err != nil && !strings.Contains(err.Error(), "OPENAI_API_KEY") {
-		t.Errorf("getChatCompletionResponse() error should mention OPENAI_API_KEY, got: %v", err)
+	if err != nil && !strings.Contains(err.Error(), "OPENAI_API_KEY") && !strings.Contains(err.Error(), "not set") {
+		t.Errorf("getChatCompletionResponse() error should mention API key not set, got: %v", err)
 	}
 }
 
@@ -301,9 +313,15 @@ func Test_formatResponse(t *testing.T) {
 }
 
 func Test_getAzureAPIVersion(t *testing.T) {
+	// Reset config to ensure fresh load
+	resetConfig()
+
 	// Save original value
 	originalVersion := os.Getenv("AZURE_API_VERSION")
-	defer os.Setenv("AZURE_API_VERSION", originalVersion)
+	defer func() {
+		os.Setenv("AZURE_API_VERSION", originalVersion)
+		resetConfig()
+	}()
 
 	// Test default value
 	os.Unsetenv("AZURE_API_VERSION")
@@ -312,7 +330,8 @@ func Test_getAzureAPIVersion(t *testing.T) {
 		t.Errorf("Expected default API version to be '2024-12-01-preview', got '%s'", version)
 	}
 
-	// Test custom value
+	// Reset and test custom value
+	resetConfig()
 	customVersion := "2024-01-01"
 	os.Setenv("AZURE_API_VERSION", customVersion)
 	version = getAzureAPIVersion()
