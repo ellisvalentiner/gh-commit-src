@@ -19,6 +19,24 @@ import (
 
 const MaxDiffLength = 30000 // set to 30k since large model has maximum context length is 32768 tokens.
 
+// Default configuration values
+const (
+	defaultCommitPrompt = `You will examine and explain the given code changes and write a commit message in Conventional Commits format. 
+		The first line of the commit message should be a 20 word Title summary include a type, optional scope, subject in text, seperated by a newline and the following body. 
+		The types should be one of:
+			- fix: for a bug fix
+			- feat: for a new feature 
+			- perf: for a performance improvement
+			- revert: to revert a previous commit
+		The body will explain the code change. Body will be formatted in well structured beautifully rendered and use relevant emojis
+		if no code changes are detected, you will reply with no code change detected message.`
+	defaultAzureAPIVersion     = "2024-12-01-preview"
+	defaultCommitMessageSuffix = "Commit message as follows:"
+)
+
+// Default code block patterns for formatResponse
+var defaultCodeBlockPatterns = []string{"```bash", "```plaintext", "```diff", "```python", "```javascript", "```go", "```java", "```csharp", "```ruby", "```php", "```html", "```css", "```json", "```xml", "```yaml", "```md", "```markdown", "```sql", "```shell", "```powershell", "```dockerfile", "```makefile", "```ini", "```apacheconf", "```nginx", "```git", "```vim", "```vimscrip", "```"}
+
 func isGitRepository() bool {
 	cmd := exec.Command("git", "rev-parse", "--git-dir")
 	err := cmd.Run()
@@ -94,24 +112,27 @@ func getCommitStats() (int, int, error) {
 	return numLines, numWords, nil
 }
 
-func getDiffPrompt(diff string) []azopenai.ChatMessage {
-
-	prompt := os.Getenv("PROMPT_OVERRIDE")
-	if prompt == "" {
-		prompt = `You will examine and explain the given code changes and write a commit message in Conventional Commits format. 
-		The first line of the commit message should be a 20 word Title summary include a type, optional scope, subject in text, seperated by a newline and the following body. 
-		The types should be one of:
-			- fix: for a bug fix
-			- feat: for a new feature 
-			- perf: for a performance improvement
-			- revert: to revert a previous commit
-		The body will explain the code change. Body will be formatted in well structured beautifully rendered and use relevant emojis
-		if no code changes are detected, you will reply with no code change detected message.`
+func getCommitPrompt() string {
+	if prompt := os.Getenv("PROMPT_OVERRIDE"); prompt != "" {
+		return prompt
 	}
+	return defaultCommitPrompt
+}
+
+func getCommitMessageSuffix() string {
+	if suffix := os.Getenv("COMMIT_MESSAGE_SUFFIX"); suffix != "" {
+		return suffix
+	}
+	return defaultCommitMessageSuffix
+}
+
+func getDiffPrompt(diff string) []azopenai.ChatMessage {
+	prompt := getCommitPrompt()
+	suffix := getCommitMessageSuffix()
 	messages := []azopenai.ChatMessage{
 		{Role: to.Ptr(azopenai.ChatRoleSystem), Content: to.Ptr(prompt)},
 		{Role: to.Ptr(azopenai.ChatRoleUser), Content: to.Ptr(diff)},
-		{Role: to.Ptr(azopenai.ChatRoleSystem), Content: to.Ptr("Commit message as follows:")},
+		{Role: to.Ptr(azopenai.ChatRoleSystem), Content: to.Ptr(suffix)},
 	}
 	return messages
 }
@@ -142,9 +163,10 @@ func getChatCompletionResponse(messages []azopenai.ChatMessage) (string, error) 
 	var client *azopenai.Client
 
 	if strings.Contains(url, "azure") {
+		apiVersion := getAzureAPIVersion()
 		clientOptions := &azopenai.ClientOptions{
 			ClientOptions: policy.ClientOptions{
-				APIVersion: "2024-12-01-preview",
+				APIVersion: apiVersion,
 			},
 		}
 		client, err = azopenai.NewClientWithKeyCredential(url, keyCredential, clientOptions)
@@ -198,24 +220,43 @@ func getChatCompletionResponse(messages []azopenai.ChatMessage) (string, error) 
 	)
 
 	if err != nil {
-		return "", fmt.Errorf("Completion error: %v", err)
+		return "", fmt.Errorf("completion error: %v", err)
 	}
 
 	if len(resp.Choices) == 0 {
-		return "", fmt.Errorf("API returned no choices in response")
+		return "", fmt.Errorf("api returned no choices in response")
 	}
 
 	if resp.Choices[0].Message.Content == nil {
-		return "", fmt.Errorf("API returned empty content in response")
+		return "", fmt.Errorf("api returned empty content in response")
 	}
 
 	return *resp.Choices[0].Message.Content, nil
 }
 
-// Patterns ordered from most specific to least specific so language-specific markers are removed before generic ```
-var patterns = []string{"```bash", "```plaintext", "```diff", "```python", "```javascript", "```go", "```java", "```csharp", "```ruby", "```php", "```html", "```css", "```json", "```xml", "```yaml", "```md", "```markdown", "```sql", "```shell", "```powershell", "```dockerfile", "```makefile", "```ini", "```apacheconf", "```nginx", "```git", "```vim", "```vimscrip", "```"}
+func getAzureAPIVersion() string {
+	if version := os.Getenv("AZURE_API_VERSION"); version != "" {
+		return version
+	}
+	return defaultAzureAPIVersion
+}
+
+func getCodeBlockPatterns() []string {
+	if patternsEnv := os.Getenv("CODE_BLOCK_PATTERNS"); patternsEnv != "" {
+		// Allow comma-separated list of patterns from environment
+		patterns := strings.Split(patternsEnv, ",")
+		// Trim whitespace from each pattern
+		for i, pattern := range patterns {
+			patterns[i] = strings.TrimSpace(pattern)
+		}
+		return patterns
+	}
+	return defaultCodeBlockPatterns
+}
 
 func formatResponse(response string) string {
+	patterns := getCodeBlockPatterns()
+	// Patterns ordered from most specific to least specific so language-specific markers are removed before generic ```
 	for _, pattern := range patterns {
 		response = strings.TrimPrefix(response, pattern)
 		response = strings.TrimSuffix(response, pattern)

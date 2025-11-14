@@ -4,8 +4,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 )
 
@@ -30,7 +30,7 @@ func Test_getGitDiff(t *testing.T) {
 		}
 		return
 	}
-	
+
 	// If in git repo, test that it doesn't panic
 	_, err := getGitDiff()
 	if err != nil {
@@ -150,10 +150,10 @@ func Test_getDiffPrompt_WithPromptOverride(t *testing.T) {
 	// Set PROMPT_OVERRIDE
 	originalPrompt := os.Getenv("PROMPT_OVERRIDE")
 	defer os.Setenv("PROMPT_OVERRIDE", originalPrompt)
-	
+
 	customPrompt := "Custom prompt for testing"
 	os.Setenv("PROMPT_OVERRIDE", customPrompt)
-	
+
 	messages := getDiffPrompt("test diff")
 	if len(messages) < 1 {
 		t.Fatal("Expected at least one message")
@@ -215,14 +215,14 @@ func Test_getChatCompletionResponse_MissingAPIKey(t *testing.T) {
 	// Save original API key
 	originalKey := os.Getenv("OPENAI_API_KEY")
 	defer os.Setenv("OPENAI_API_KEY", originalKey)
-	
+
 	// Unset API key
 	os.Unsetenv("OPENAI_API_KEY")
-	
+
 	messages := []azopenai.ChatMessage{
 		{Role: to.Ptr(azopenai.ChatRoleSystem), Content: to.Ptr("test")},
 	}
-	
+
 	_, err := getChatCompletionResponse(messages)
 	if err == nil {
 		t.Error("getChatCompletionResponse() should return error when OPENAI_API_KEY is not set")
@@ -231,7 +231,6 @@ func Test_getChatCompletionResponse_MissingAPIKey(t *testing.T) {
 		t.Errorf("getChatCompletionResponse() error should mention OPENAI_API_KEY, got: %v", err)
 	}
 }
-
 
 func Test_formatResponse(t *testing.T) {
 	type args struct {
@@ -301,17 +300,23 @@ func Test_formatResponse(t *testing.T) {
 	}
 }
 
-func Test_azureClientOptionsSetAPIVersion(t *testing.T) {
-	// Test that Azure client creation includes proper API version
-	// This test verifies the fix for o4-mini model compatibility
-	clientOptions := &azopenai.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			APIVersion: "2024-12-01-preview",
-		},
+func Test_getAzureAPIVersion(t *testing.T) {
+	// Save original value
+	originalVersion := os.Getenv("AZURE_API_VERSION")
+	defer os.Setenv("AZURE_API_VERSION", originalVersion)
+
+	// Test default value
+	os.Unsetenv("AZURE_API_VERSION")
+	version := getAzureAPIVersion()
+	if version != "2024-12-01-preview" {
+		t.Errorf("Expected default API version to be '2024-12-01-preview', got '%s'", version)
 	}
-	
-	// Verify the API version is set correctly
-	if clientOptions.ClientOptions.APIVersion != "2024-12-01-preview" {
-		t.Errorf("Expected API version to be '2024-12-01-preview', got '%s'", clientOptions.ClientOptions.APIVersion)
+
+	// Test custom value
+	customVersion := "2024-01-01"
+	os.Setenv("AZURE_API_VERSION", customVersion)
+	version = getAzureAPIVersion()
+	if version != customVersion {
+		t.Errorf("Expected API version to be '%s', got '%s'", customVersion, version)
 	}
 }
