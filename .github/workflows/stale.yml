@@ -1,0 +1,56 @@
+name: Mark Stale Issues and PRs
+
+on:
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    name: Mark stale issues and PRs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mark stale issues and PRs
+        uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          
+          # Issues configuration
+          stale-issue-message: |
+            This issue has been automatically marked as stale because it has not had recent activity. 
+            It will be closed if no further activity occurs within 7 days. Thank you for your contributions.
+          close-issue-message: |
+            This issue was automatically closed due to inactivity. If you believe this is still relevant, 
+            please feel free to reopen it or create a new issue.
+          stale-issue-label: 'stale'
+          days-before-issue-stale: 60
+          days-before-issue-close: 7
+          
+          # PRs configuration
+          stale-pr-message: |
+            This pull request has been automatically marked as stale because it has not had recent activity. 
+            It will be closed if no further activity occurs within 7 days. Thank you for your contributions.
+          close-pr-message: |
+            This pull request was automatically closed due to inactivity. If you'd like to continue working on this, 
+            please feel free to reopen it or create a new PR.
+          stale-pr-label: 'stale'
+          days-before-pr-stale: 30
+          days-before-pr-close: 7
+          
+          # Exemptions
+          exempt-issue-labels: 'pinned,security,bug,enhancement'
+          exempt-pr-labels: 'pinned,security,work-in-progress'
+          exempt-all-issue-milestones: false
+          exempt-all-pr-milestones: false
+          exempt-draft-pr: true
+          
+          # Operations
+          operations-per-run: 30
+          remove-stale-when-updated: true
+          ascending: true
+

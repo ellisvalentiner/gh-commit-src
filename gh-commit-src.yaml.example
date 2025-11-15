@@ -1,0 +1,83 @@
+# gh-commit-src Configuration File
+# Place this file in one of the following locations:
+# - Current directory: .gh-commit-src.yaml or gh-commit-src.yaml
+# - Home directory: ~/.gh-commit-src.yaml
+# - XDG config: ~/.config/gh-commit-src/config.yaml
+
+# OpenAI Configuration
+openai:
+  # Required: Your OpenAI API key
+  api_key: "sk-your-api-key-here"
+  
+  # Optional: API endpoint URL (default: https://api.openai.com/v1)
+  # For Azure OpenAI, use your endpoint URL
+  url: "https://api.openai.com/v1"
+  
+  # Optional: Model to use (default: gpt-4)
+  model: "gpt-4"
+  
+  # Optional: Azure API version (only used for Azure OpenAI)
+  api_version: "2024-12-01-preview"
+
+# Fine-tuning Parameters
+# These parameters control the behavior of the language model
+fine_tune:
+  # Temperature: Controls randomness (0.0-2.0)
+  # Lower values make output more deterministic
+  temperature: 0.7
+  
+  # Max tokens: Maximum number of tokens in the response
+  max_tokens: 500
+  
+  # Top P: Nucleus sampling parameter (0.0-1.0)
+  top_p: 0.9
+  
+  # Frequency penalty: Reduces repetition (-2.0 to 2.0)
+  frequency_penalty: 0.0
+  
+  # Presence penalty: Encourages new topics (-2.0 to 2.0)
+  presence_penalty: 0.0
+
+# Prompt Configuration
+prompt:
+  # Optional: Override the default commit message prompt
+  # override: |
+  #   Your custom prompt here
+  
+  # Optional: Custom suffix for commit messages
+  suffix: "Commit message as follows:"
+
+# Code Block Patterns
+# Patterns used to remove code block markers from AI responses
+code_block:
+  patterns:
+    - "```bash"
+    - "```plaintext"
+    - "```diff"
+    - "```python"
+    - "```javascript"
+    - "```go"
+    - "```java"
+    - "```csharp"
+    - "```ruby"
+    - "```php"
+    - "```html"
+    - "```css"
+    - "```json"
+    - "```xml"
+    - "```yaml"
+    - "```md"
+    - "```markdown"
+    - "```sql"
+    - "```shell"
+    - "```powershell"
+    - "```dockerfile"
+    - "```makefile"
+    - "```ini"
+    - "```apacheconf"
+    - "```nginx"
+    - "```git"
+    - "```vim"
+    - "```vimscrip"
+    - "```"
+

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 )
 
 func main() {
@@ -48,12 +49,23 @@ func main() {
 
 	if flag.NFlag() == 0 {
 		diff, err := getGitDiff()
+		if err != nil {
+			// Check if it's just a truncation warning
+			if _, ok := err.(*DiffTruncatedWarning); ok {
+				// Print warning to stderr but continue
+				fmt.Fprintf(os.Stderr, "%v\n", err)
+			} else {
+				// Real error - exit
+				fmt.Printf("Error: %v\n", err)
+				return
+			}
+		}
 		completionResponse, err := getChatCompletionResponse(getDiffPrompt(diff))
-		completionResponse = formatResponse(completionResponse)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			return
 		}
+		completionResponse = formatResponse(completionResponse)
 		fmt.Println(completionResponse)
 	}
 }

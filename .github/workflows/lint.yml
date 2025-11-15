@@ -1,4 +1,4 @@
-name: Go Build and Test Workflow
+name: Lint and Code Quality
 
 on:
   push:
@@ -10,20 +10,17 @@ env:
   GO_VERSION: '1.21'
 
 jobs:
-  test:
-    name: Test
+  golangci-lint:
+    name: Run golangci-lint
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go-version: ['1.21', '1.22']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Go ${{ matrix.go-version }}
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: go.sum
 
       - name: Cache Go modules
@@ -36,28 +33,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Download dependencies
-        run: go mod download
-
-      - name: Verify dependencies
-        run: go mod verify
-
-      - name: Run tests
-        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        if: matrix.go-version == '1.21'
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
         with:
-          file: ./coverage.out
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
+          version: latest
+          args: --timeout=5m
 
-  build:
-    name: Build
+  go-vet:
+    name: Run go vet
     runs-on: ubuntu-latest
-    needs: test
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -80,44 +64,44 @@ jobs:
 
       - name: Download dependencies
         run: go mod download
-
-      - name: Build
-        run: go build -v ./...
-
-      - name: Verify build artifacts
-        run: |
-          if [ -f ./gh-commit-src ]; then
-            chmod +x ./gh-commit-src
-            echo "Build successful: gh-commit-src binary created"
-          else
-            echo "Warning: Expected binary not found"
-          fi
-
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: go.sum
 
       - name: Run go vet
         run: go vet ./...
 
+  go-fmt:
+    name: Check code formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
       - name: Check formatting
         run: |
-          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
-            echo "Code is not formatted. Run 'go fmt ./...'"
-            gofmt -s -d .
+          unformatted=$(gofmt -s -l .)
+          if [ -n "$unformatted" ]; then
+            echo "The following files are not properly formatted:"
+            echo "$unformatted"
             exit 1
           fi
 
-      - name: Run go mod tidy check
+  go-mod-tidy:
+    name: Check go mod tidy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Check go mod tidy
         run: |
           go mod tidy
           if [ -n "$(git status --porcelain)" ]; then
@@ -125,3 +109,4 @@ jobs:
             git diff
             exit 1
           fi
+

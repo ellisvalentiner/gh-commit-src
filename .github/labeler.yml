@@ -1,0 +1,50 @@
+# Labeler configuration for automatic PR labeling based on file patterns
+# Format for actions/labeler@v6
+
+go:
+  - any-glob-to-any-file:
+      - '**/*.go'
+      - '!**/*_test.go'
+      - '!**/testdata/**'
+
+test:
+  - any-glob-to-any-file:
+      - '**/*_test.go'
+      - '**/testdata/**'
+      - '**/*.test'
+
+documentation:
+  - any-glob-to-any-file:
+      - '**/*.md'
+      - '**/*.mdx'
+      - '**/docs/**'
+      - '**/README*'
+      - '**/CHANGELOG*'
+      - '**/LICENSE*'
+
+workflow:
+  - any-glob-to-any-file:
+      - '.github/workflows/**'
+      - '.github/**/*.yml'
+      - '.github/**/*.yaml'
+
+dependencies:
+  - any-glob-to-any-file:
+      - 'go.mod'
+      - 'go.sum'
+      - '**/go.mod'
+      - '**/go.sum'
+
+config:
+  - any-glob-to-any-file:
+      - '.github/**'
+      - '**/.gitignore'
+      - '**/.golangci.yml'
+      - '**/.golangci.yaml'
+      - '**/dependabot.yml'
+
+script:
+  - any-glob-to-any-file:
+      - '**/*.sh'
+      - '**/*.bash'
+      - '**/scripts/**'
